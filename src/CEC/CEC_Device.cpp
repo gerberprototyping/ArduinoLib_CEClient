@@ -6,8 +6,13 @@
 # define CEC_HIGH 1
 # define CEC_LOW 0
 #else
+#ifdef SOFTWARE_OPEN_DRAIN
+#define CEC_HIGH 1
+#define CEC_LOW 0
+#else
 # define CEC_HIGH LOW
 # define CEC_LOW HIGH
+#endif
 #endif
 
 CEC_Device::CEC_Device(int physicalAddress, int in_line, int out_line)
@@ -21,15 +26,19 @@ CEC_Device::CEC_Device(int physicalAddress, int in_line, int out_line)
 
 void CEC_Device::Initialize(CEC_DEVICE_TYPE type)
 {
+#ifdef SOFTWARE_OPEN_DRAIN
+  pinMode(_in_line, INPUT);
+  digitalWrite(_in_line, CEC_LOW);
+#else
 #ifdef STM32
   gpio_set_mode(digitalPinToPort(_in_line), PIN_MAP[_in_line].gpio_bit, GPIO_OUTPUT_OD); // set open drain output
   _out_line = _in_line;
 #else
   pinMode(_out_line, OUTPUT);
   pinMode( _in_line,  INPUT);
-#endif  
-
+#endif
   digitalWrite(_out_line, CEC_HIGH);
+#endif
   delay(200);
 
   CEC_LogicalDevice::Initialize(type);
@@ -61,7 +70,11 @@ bool CEC_Device::LineState()
 
 void CEC_Device::SetLineState(bool state)
 {
+#ifdef SOFTWARE_OPEN_DRAIN
+  pinMode(_in_line, state?INPUT:OUTPUT);
+#else
   digitalWrite(_out_line, state?CEC_HIGH:CEC_LOW);
+#endif
   // give enough time for the line to settle before sampling
   // it
   delayMicroseconds(50);
